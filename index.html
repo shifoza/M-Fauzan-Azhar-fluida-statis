@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>WebAR - Tekanan Hidrostatis</title>
+    <title>WebAR - Media Pembelajaran Fluida Statis</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: 'Inter', sans-serif; overflow: hidden; background-color: #f3f4f6; }
         
-        /* Custom Scrollbar for LKPD panel */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
@@ -31,9 +31,7 @@
             box-shadow: 0 0 2px rgba(0,0,0,0.5);
             transition: transform 0.1s;
         }
-        input[type=range]::-webkit-slider-thumb:hover {
-            transform: scale(1.2);
-        }
+        input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
         input[type=range]::-webkit-slider-runnable-track {
             width: 100%; height: 6px;
             cursor: pointer;
@@ -41,7 +39,7 @@
             border-radius: 3px;
         }
         
-        /* Mengatur tampilan saat Mode AR Aktif */
+        /* AR Overlay Styles */
         #ar-overlay-ui { display: none; }
         .xr-active #ar-overlay-ui { display: block !important; }
         .xr-active #ui-overlays { display: none !important; }
@@ -54,19 +52,14 @@
             border: 1px solid rgba(255,255,255,0.4);
         }
 
-        /* CSS Animasi untuk Panel Minimize */
-        #lkpd-panel {
-            transition: margin 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .panel-minimized {
-            margin-top: -50vh; /* Geser ke atas (keluar layar) pada layar HP */
-        }
+        #lkpd-panel { transition: margin 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        .panel-minimized { margin-top: -80vh; }
         @media (min-width: 768px) {
-            .panel-minimized {
-                margin-top: 0;
-                margin-left: -400px; /* Geser ke kiri (keluar layar) pada layar Desktop */
-            }
+            .panel-minimized { margin-top: 0; margin-left: -450px; }
         }
+
+        .tab-active { background-color: #2563eb; color: white; border-color: #2563eb; font-weight: 600; }
+        .tab-inactive { background-color: #f3f4f6; color: #4b5563; border-color: #e5e7eb; hover:bg-gray-200; }
     </style>
     
     <!-- Import Maps for Three.js -->
@@ -82,180 +75,368 @@
 <body class="h-screen w-screen flex flex-col md:flex-row text-gray-800 overflow-hidden">
 
     <!-- BAGIAN KIRI: Panel LKPD -->
-    <div id="lkpd-panel" class="relative w-full md:w-[400px] bg-white h-1/2 md:h-full shadow-2xl z-30 flex flex-col shrink-0 border-r border-gray-200 transition-all duration-300 ease-in-out">
+    <div id="lkpd-panel" class="relative w-full md:w-[450px] bg-white h-[55%] md:h-full shadow-2xl z-30 flex flex-col shrink-0 border-r border-gray-200 transition-all duration-300 ease-in-out">
         
-        <!-- Tombol Minimize Samping (Khusus Desktop) -->
-        <button id="btn-toggle-side" title="Sembunyikan/Tampilkan Panel" class="hidden md:flex absolute top-1/2 -right-8 w-8 h-16 bg-blue-600 hover:bg-blue-700 text-white rounded-r-lg items-center justify-center shadow-[4px_0_10px_rgba(0,0,0,0.1)] transform -translate-y-1/2 z-40 border-y border-r border-blue-700 cursor-pointer group transition-colors">
-            <svg id="icon-chevron-side" class="w-5 h-5 transition-transform duration-300 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+        <!-- Toggle Buttons -->
+        <button id="btn-toggle-side" title="Sembunyikan/Tampilkan Panel" class="hidden md:flex absolute top-1/2 -right-8 w-8 h-16 bg-blue-600 hover:bg-blue-700 text-white rounded-r-lg items-center justify-center shadow-md transform -translate-y-1/2 z-40 border-y border-r border-blue-700 cursor-pointer transition-colors">
+            <svg id="icon-chevron-side" class="w-5 h-5 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+        </button>
+        <button id="btn-toggle-bottom" title="Sembunyikan/Tampilkan Panel" class="md:hidden flex absolute -bottom-8 left-1/2 transform -translate-x-1/2 w-16 h-8 bg-blue-600 hover:bg-blue-700 text-white rounded-b-lg items-center justify-center shadow-md z-40 border-x border-b border-blue-700 cursor-pointer transition-colors">
+            <svg id="icon-chevron-bottom" class="w-5 h-5 transition-transform duration-300 transform -rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
         </button>
 
-        <!-- Tombol Minimize Bawah (Khusus HP/Mobile) -->
-        <button id="btn-toggle-bottom" title="Sembunyikan/Tampilkan Panel" class="md:hidden flex absolute -bottom-8 left-1/2 transform -translate-x-1/2 w-16 h-8 bg-blue-600 hover:bg-blue-700 text-white rounded-b-lg items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.1)] z-40 border-x border-b border-blue-700 cursor-pointer group transition-colors">
-            <svg id="icon-chevron-bottom" class="w-5 h-5 transition-transform duration-300 transform -rotate-90 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-        </button>
+        <!-- Navigation Tabs -->
+        <div class="flex px-2 pt-2 bg-gray-100 border-b border-gray-200 shadow-inner z-20 shrink-0 gap-1 overflow-x-auto text-sm">
+            <button onclick="switchMenu(1)" id="tab-1" class="tab-active flex-1 min-w-[80px] text-center py-2 px-1 rounded-t-lg border-t border-x transition-colors">Pert. 1<br><span class="text-[10px] font-normal leading-tight">Tekanan</span></button>
+            <button onclick="switchMenu(2)" id="tab-2" class="tab-inactive flex-1 min-w-[80px] text-center py-2 px-1 rounded-t-lg border-t border-x transition-colors">Pert. 2<br><span class="text-[10px] font-normal leading-tight">Hk. Pascal</span></button>
+            <button onclick="switchMenu(3)" id="tab-3" class="tab-inactive flex-1 min-w-[80px] text-center py-2 px-1 rounded-t-lg border-t border-x transition-colors">Pert. 3<br><span class="text-[10px] font-normal leading-tight">Hk. Archimedes</span></button>
+        </div>
 
-        <!-- Area Konten (Dibungkus terpisah agar tombol di luar tidak terpotong scroll) -->
-        <div class="w-full h-full flex flex-col overflow-y-auto overflow-x-hidden bg-white relative z-10">
-            <div class="p-6 bg-blue-600 text-white shadow-md shrink-0 relative z-20">
-                <h1 class="text-2xl font-bold">LKPD Virtual</h1>
-                <p class="text-sm opacity-90">Praktikum Tekanan Hidrostatis</p>
+        <!-- Scrollable Content Area -->
+        <div class="w-full h-full flex flex-col overflow-y-auto bg-white relative z-10 pb-10">
+            
+            <!-- LKPD 1: Tekanan Hidrostatis -->
+            <div id="lkpd-1" class="block">
+                <div class="p-5 bg-blue-600 text-white shadow-md">
+                    <h1 class="text-xl font-bold">Tekanan Hidrostatis</h1>
+                    <p class="text-xs opacity-90">Praktikum Virtual Fluida Statis</p>
+                </div>
+                <div class="p-5 space-y-5">
+                    <section>
+                        <h2 class="font-bold text-gray-800 border-b pb-1">Tujuan Pembelajaran</h2>
+                        <ul class="list-disc pl-5 text-sm text-gray-700 mt-2 space-y-1">
+                            <li>Memahami konsep tekanan hidrostatis.</li>
+                            <li>Menganalisis pengaruh kedalaman (h) dan massa jenis (ρ) terhadap tekanan.</li>
+                        </ul>
+                    </section>
+                    <section class="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                        <h2 class="font-bold text-blue-800 text-sm mb-1">Materi Singkat</h2>
+                        <p class="text-xs text-gray-700">Tekanan hidrostatis adalah tekanan yang diakibatkan oleh gaya yang ada pada zat cair terhadap suatu luas bidang tekan pada kedalaman tertentu.</p>
+                        <div class="text-center font-mono font-bold text-blue-700 bg-white py-2 rounded mt-2 border">P = ρ × g × h</div>
+                    </section>
+                    <section>
+                        <h2 class="font-bold text-gray-800 border-b pb-1">Langkah Praktikum</h2>
+                        <ol class="list-decimal pl-5 text-sm text-gray-700 mt-2 space-y-1">
+                            <li>Atur <b>Massa Jenis (ρ)</b> fluida.</li>
+                            <li>Geser slider <b>Kedalaman (h)</b> secara bertahap.</li>
+                            <li>Amati perubahan panah tekanan merah di kanvas 3D.</li>
+                            <li>Klik <b>Catat Data</b> pada setiap perubahan.</li>
+                        </ol>
+                    </section>
+                    <section>
+                        <div class="flex justify-between items-end border-b pb-1 mb-2">
+                            <h2 class="font-bold text-gray-800">Tabel Pengamatan</h2>
+                            <button id="btn-record-1" class="bg-green-500 hover:bg-green-600 text-white text-xs px-3 py-1.5 rounded transition shadow-sm font-medium">Catat Data</button>
+                        </div>
+                        <div class="overflow-x-auto rounded border">
+                            <table class="w-full text-xs text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-gray-100">
+                                        <th class="border-b p-2 font-medium">No</th>
+                                        <th class="border-b p-2 font-medium">ρ (kg/m³)</th>
+                                        <th class="border-b p-2 font-medium">h (m)</th>
+                                        <th class="border-b p-2 font-medium">P (Pa)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-body-1"></tbody>
+                            </table>
+                        </div>
+                    </section>
+                    <section class="space-y-3">
+                        <h2 class="font-bold text-gray-800 border-b pb-1">Analisis & Kesimpulan</h2>
+                        <div>
+                            <p class="text-xs font-medium text-gray-700 mb-1">1. Bagaimana hubungan antara kedalaman (h) dengan tekanan hidrostatis?</p>
+                            <textarea class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-400 outline-none text-xs bg-gray-50" rows="2"></textarea>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-gray-700 mb-1">2. Tariklah kesimpulan dari hasil percobaan ini!</p>
+                            <textarea class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-400 outline-none text-xs bg-gray-50" rows="3"></textarea>
+                        </div>
+                    </section>
+                </div>
             </div>
 
-            <div class="p-6 space-y-6 flex-grow">
-                <!-- Identitas -->
-                    <li>Gunakan tombol <b>Mulai AR</b> untuk meletakkan alat di meja nyata Anda.</li>
-                </ol>
-            </section>
-
-            <!-- Tabel Pengamatan -->
-            <section class="space-y-3">
-                <h2 class="font-semibold text-lg border-b pb-1 flex justify-between items-center">
-                    Tabel Pengamatan
-                    <button id="btn-record" class="bg-green-500 hover:bg-green-600 text-white text-xs px-3 py-1.5 rounded transition shadow-sm font-medium">Catat Data</button>
-                </h2>
-                <div class="overflow-x-auto rounded border">
-                    <table class="w-full text-xs text-left border-collapse">
-                        <thead>
-                            <tr class="bg-gray-100">
-                                <th class="border-b p-2 font-medium">No</th>
-                                <th class="border-b p-2 font-medium">ρ (kg/m³)</th>
-                                <th class="border-b p-2 font-medium">h (m)</th>
-                                <th class="border-b p-2 font-medium">P (Pa)</th>
-                            </tr>
-                        </thead>
-                        <tbody id="data-table-body">
-                            <!-- Data rows will be added here -->
-                        </tbody>
-                    </table>
+            <!-- LKPD 2: Hukum Pascal -->
+            <div id="lkpd-2" class="hidden">
+                <div class="p-5 bg-indigo-600 text-white shadow-md">
+                    <h1 class="text-xl font-bold">Hukum Pascal</h1>
+                    <p class="text-xs opacity-90">Praktikum Sistem Hidrolik</p>
                 </div>
-            </section>
+                <div class="p-5 space-y-5">
+                    <section>
+                        <h2 class="font-bold text-gray-800 border-b pb-1">Tujuan Pembelajaran</h2>
+                        <ul class="list-disc pl-5 text-sm text-gray-700 mt-2 space-y-1">
+                            <li>Memahami prinsip kerja Hukum Pascal.</li>
+                            <li>Menganalisis hubungan luas penampang dengan gaya yang dihasilkan.</li>
+                        </ul>
+                    </section>
+                    <section class="bg-indigo-50 p-3 rounded-lg border border-indigo-100">
+                        <h2 class="font-bold text-indigo-800 text-sm mb-1">Materi Singkat</h2>
+                        <p class="text-xs text-gray-700">Tekanan yang diberikan pada zat cair dalam ruang tertutup akan diteruskan ke segala arah dengan sama besar (P₁ = P₂).</p>
+                        <div class="text-center font-mono font-bold text-indigo-700 bg-white py-2 rounded mt-2 border">F₁ / A₁ = F₂ / A₂</div>
+                    </section>
+                    <section>
+                        <h2 class="font-bold text-gray-800 border-b pb-1">Langkah Praktikum</h2>
+                        <ol class="list-decimal pl-5 text-sm text-gray-700 mt-2 space-y-1">
+                            <li>Atur <b>Luas Penampang Kiri (A₁)</b> dan <b>Kanan (A₂)</b>.</li>
+                            <li>Beri <b>Gaya Input (F₁)</b> pada piston kiri.</li>
+                            <li>Amati pergerakan piston dan hasil <b>Gaya Output (F₂)</b>.</li>
+                            <li>Klik <b>Catat Data</b>.</li>
+                        </ol>
+                    </section>
+                    <section>
+                        <div class="flex justify-between items-end border-b pb-1 mb-2">
+                            <h2 class="font-bold text-gray-800">Tabel Pengamatan</h2>
+                            <button id="btn-record-2" class="bg-green-500 hover:bg-green-600 text-white text-xs px-3 py-1.5 rounded transition shadow-sm font-medium">Catat Data</button>
+                        </div>
+                        <div class="overflow-x-auto rounded border">
+                            <table class="w-full text-xs text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-gray-100">
+                                        <th class="border-b p-1 font-medium">A₁(m²)</th>
+                                        <th class="border-b p-1 font-medium">F₁(N)</th>
+                                        <th class="border-b p-1 font-medium bg-indigo-50">A₂(m²)</th>
+                                        <th class="border-b p-1 font-medium bg-indigo-50">F₂(N)</th>
+                                        <th class="border-b p-1 font-medium text-gray-400">P(Pa)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-body-2"></tbody>
+                            </table>
+                        </div>
+                    </section>
+                    <section class="space-y-3">
+                        <h2 class="font-bold text-gray-800 border-b pb-1">Analisis & Kesimpulan</h2>
+                        <div>
+                            <p class="text-xs font-medium text-gray-700 mb-1">1. Bagaimana cara menghasilkan gaya angkat (F₂) yang lebih besar?</p>
+                            <textarea class="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-400 outline-none text-xs bg-gray-50" rows="2"></textarea>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-gray-700 mb-1">2. Apakah tekanan di piston 1 sama dengan piston 2?</p>
+                            <textarea class="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-400 outline-none text-xs bg-gray-50" rows="2"></textarea>
+                        </div>
+                    </section>
+                </div>
+            </div>
 
-            <!-- Analisis -->
-            <section class="space-y-2 pb-10">
-                <h2 class="font-semibold text-lg border-b pb-1">Analisis & Kesimpulan</h2>
-                <p class="text-sm font-medium text-gray-700">1. Bagaimana hubungan antara kedalaman (h) dengan tekanan hidrostatis (P)?</p>
-                <textarea class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-400 outline-none text-sm bg-gray-50" rows="3"></textarea>
-                <p class="text-sm font-medium text-gray-700 mt-2">2. Bagaimana pengaruh massa jenis cairan terhadap tekanan?</p>
-                <textarea class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-400 outline-none text-sm bg-gray-50" rows="3"></textarea>
-            </section>
+            <!-- LKPD 3: Hukum Archimedes -->
+            <div id="lkpd-3" class="hidden">
+                <div class="p-5 bg-teal-600 text-white shadow-md">
+                    <h1 class="text-xl font-bold">Hukum Archimedes</h1>
+                    <p class="text-xs opacity-90">Praktikum Gaya Apung</p>
+                </div>
+                <div class="p-5 space-y-5">
+                    <section>
+                        <h2 class="font-bold text-gray-800 border-b pb-1">Tujuan Pembelajaran</h2>
+                        <ul class="list-disc pl-5 text-sm text-gray-700 mt-2 space-y-1">
+                            <li>Memahami konsep gaya apung (Archimedes).</li>
+                            <li>Menentukan syarat benda terapung, melayang, dan tenggelam.</li>
+                        </ul>
+                    </section>
+                    <section class="bg-teal-50 p-3 rounded-lg border border-teal-100">
+                        <h2 class="font-bold text-teal-800 text-sm mb-1">Materi Singkat</h2>
+                        <p class="text-xs text-gray-700">Setiap benda yang dicelupkan ke dalam fluida akan mendapat gaya ke atas (gaya apung) sebesar berat fluida yang dipindahkan.</p>
+                        <div class="text-center font-mono font-bold text-teal-700 bg-white py-2 rounded mt-2 border">F<sub class="text-[10px]">A</sub> = ρ<sub class="text-[10px]">f</sub> × g × V<sub class="text-[10px]">tercelup</sub></div>
+                    </section>
+                    <section>
+                        <h2 class="font-bold text-gray-800 border-b pb-1">Langkah Praktikum</h2>
+                        <ol class="list-decimal pl-5 text-sm text-gray-700 mt-2 space-y-1">
+                            <li>Atur <b>Massa Jenis Cairan (ρ<sub>f</sub>)</b>.</li>
+                            <li>Atur <b>Massa Jenis Benda (ρ<sub>b</sub>)</b> dan Volumenya.</li>
+                            <li>Amati posisi akhir benda di dalam air dan panah gaya (W dan F<sub>A</sub>).</li>
+                            <li>Klik <b>Catat Data</b>.</li>
+                        </ol>
+                    </section>
+                    <section>
+                        <div class="flex justify-between items-end border-b pb-1 mb-2">
+                            <h2 class="font-bold text-gray-800">Tabel Pengamatan</h2>
+                            <button id="btn-record-3" class="bg-green-500 hover:bg-green-600 text-white text-xs px-3 py-1.5 rounded transition shadow-sm font-medium">Catat Data</button>
+                        </div>
+                        <div class="overflow-x-auto rounded border">
+                            <table class="w-full text-[11px] text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-gray-100">
+                                        <th class="border-b p-1 font-medium">ρ<sub>f</sub></th>
+                                        <th class="border-b p-1 font-medium">ρ<sub>b</sub></th>
+                                        <th class="border-b p-1 font-medium">W(N)</th>
+                                        <th class="border-b p-1 font-medium">F<sub>A</sub>(N)</th>
+                                        <th class="border-b p-1 font-medium">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-body-3"></tbody>
+                            </table>
+                        </div>
+                    </section>
+                    <section class="space-y-3">
+                        <h2 class="font-bold text-gray-800 border-b pb-1">Analisis & Kesimpulan</h2>
+                        <div>
+                            <p class="text-xs font-medium text-gray-700 mb-1">1. Kapan benda dinyatakan terapung, melayang, atau tenggelam?</p>
+                            <textarea class="w-full p-2 border rounded focus:ring-2 focus:ring-teal-400 outline-none text-xs bg-gray-50" rows="3"></textarea>
+                        </div>
+                    </section>
+                </div>
+            </div>
         </div>
     </div>
-</div>
 
     <!-- BAGIAN KANAN: Area 3D & UI Overlays -->
-    <div class="flex-1 relative h-1/2 md:h-full bg-gray-100 flex flex-col overflow-hidden">
+    <div class="flex-1 relative h-[45%] md:h-full bg-gray-100 flex flex-col overflow-hidden">
         
         <!-- WebGL & WebXR Canvas container -->
         <div id="ar-container" class="absolute inset-0 z-0 bg-gray-200">
-            <!-- 3D Canvas (Menerima interaksi penuh untuk zoom dan rotasi) -->
             <canvas id="webgl-canvas" class="w-full h-full outline-none touch-none cursor-grab active:cursor-grabbing"></canvas>
-            
-            <!-- AR Button Container -->
             <div id="ar-button-container" class="absolute bottom-4 right-4 z-50 pointer-events-auto"></div>
             
-            <!-- DOM Overlay for Immersive AR session -->
+            <!-- DOM Overlay for Immersive AR -->
             <div id="ar-overlay-ui" class="absolute top-0 left-0 w-full h-full pointer-events-none">
-                <div class="absolute bottom-10 left-1/2 transform -translate-x-1/2 w-[90%] max-w-sm glass-panel p-4 rounded-xl shadow-2xl pointer-events-auto">
-                    <div class="text-center mb-2">
-                        <span class="text-xs text-gray-500 font-medium uppercase tracking-wide">Tekanan di Sensor</span><br>
-                        <span id="ar-output-pressure" class="text-3xl font-bold text-blue-600">0</span> <span class="text-sm text-gray-600">Pa</span>
-                    </div>
-                    <div class="flex justify-between text-sm mb-1 mt-4">
-                        <span class="font-medium text-gray-700">Kedalaman (h)</span>
-                        <span class="font-mono text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded"><span id="ar-val-depth">0.50</span> m</span>
-                    </div>
-                    <input type="range" id="ar-slider-depth" min="0.01" max="1.00" step="0.01" value="0.5" class="w-full accent-blue-600 h-2 mt-2">
-                    <button id="btn-exit-ar" class="mt-5 w-full bg-red-500 hover:bg-red-600 text-white rounded-lg py-2.5 text-sm font-semibold transition shadow-md">Keluar Mode AR</button>
+                <div class="absolute bottom-10 left-1/2 transform -translate-x-1/2 w-[90%] max-w-sm glass-panel p-4 rounded-xl shadow-2xl pointer-events-auto text-center">
+                    <span class="text-sm text-gray-800 font-bold mb-2 block">Mode Augmented Reality Aktif</span>
+                    <button id="btn-exit-ar" class="mt-2 w-full bg-red-500 hover:bg-red-600 text-white rounded-lg py-2.5 text-sm font-semibold transition shadow-md">Keluar AR</button>
                 </div>
                 <div id="ar-instruction" class="absolute top-1/4 left-0 w-full text-center pointer-events-none">
-                    <span class="bg-black/70 text-white px-5 py-3 rounded-full backdrop-blur text-sm shadow-lg border border-white/20">
-                        Arahkan kamera ke permukaan datar & Tap untuk meletakkan
-                    </span>
+                    <span class="bg-black/70 text-white px-5 py-3 rounded-full backdrop-blur text-sm shadow-lg border border-white/20">Arahkan kamera ke meja & Tap layar</span>
                 </div>
             </div>
         </div>
 
-        <!-- UI Overlays untuk Mode Non-AR (Desktop/Mobile Web) -->
-        <div id="ui-overlays" class="absolute inset-0 z-10 pointer-events-none flex flex-col justify-between">
+        <!-- UI Overlays Non-AR -->
+        <div id="ui-overlays" class="absolute inset-0 z-10 pointer-events-none flex flex-col justify-between p-4 pb-6 md:p-6 overflow-y-auto">
             
-            <!-- Header Status & Output (Pojok Kanan Atas) -->
-            <div class="p-4 flex justify-end items-start w-full">
-                <div class="glass-panel p-4 rounded-xl shadow-lg pointer-events-auto min-w-[260px] cursor-default border border-gray-200">
-                    <div id="toggle-hasil-btn" class="flex justify-between items-center cursor-pointer group">
-                        <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide">Hasil Pengukuran</h3>
-                        <svg id="icon-hasil" class="w-5 h-5 text-gray-400 group-hover:text-blue-500 transition-transform duration-300 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+            <!-- Top Right: Hasil Pengukuran -->
+            <div class="flex justify-end items-start w-full pointer-events-none shrink-0 mb-4">
+                <div class="glass-panel p-4 rounded-xl shadow-lg pointer-events-auto min-w-[260px] cursor-default border border-gray-200 bg-white/90">
+                    <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide border-b pb-1 mb-2">Hasil Komputasi</h3>
+                    
+                    <!-- Hasil 1: Hidrostatis -->
+                    <div id="hasil-1" class="block">
+                        <div class="text-3xl font-bold text-blue-600 mb-1 tracking-tight">
+                            <span id="out-1-p">0</span> <span class="text-base text-gray-400 font-medium">Pa</span>
+                        </div>
+                        <div class="w-full h-24 bg-white rounded border border-gray-100 p-1 relative mt-2">
+                            <canvas id="pressure-chart"></canvas>
+                        </div>
                     </div>
                     
-                    <div id="content-hasil" class="overflow-hidden transition-all duration-300 max-h-[300px] opacity-100 mt-1">
-                        <div class="text-4xl font-bold text-blue-600 mb-2 tracking-tight mt-2">
-                            <span id="output-pressure">0</span> <span class="text-xl text-gray-400 font-medium">Pa</span>
+                    <!-- Hasil 2: Pascal -->
+                    <div id="hasil-2" class="hidden">
+                        <div class="grid grid-cols-2 gap-2 text-sm mt-2">
+                            <div class="bg-gray-50 p-2 rounded border border-gray-100">
+                                <span class="text-[10px] text-gray-500 block uppercase">Tekanan (P)</span>
+                                <span class="font-bold text-indigo-600 text-lg" id="out-2-p">0</span><span class="text-xs"> Pa</span>
+                            </div>
+                            <div class="bg-indigo-50 p-2 rounded border border-indigo-100">
+                                <span class="text-[10px] text-indigo-500 block uppercase font-bold">Gaya Angkat (F₂)</span>
+                                <span class="font-bold text-indigo-700 text-xl" id="out-2-f2">0</span><span class="text-xs"> N</span>
+                            </div>
                         </div>
-                        <div class="text-xs text-gray-500 font-mono bg-gray-100 p-1.5 rounded text-center mb-3">P = ρ × g × h</div>
-                        
-                        <!-- Graph Canvas -->
-                        <div class="w-full h-32 bg-white rounded border border-gray-100 p-1 relative">
-                            <canvas id="pressure-chart"></canvas>
+                    </div>
+
+                    <!-- Hasil 3: Archimedes -->
+                    <div id="hasil-3" class="hidden">
+                        <div class="bg-teal-50 p-2 rounded border border-teal-100 text-center mb-2">
+                            <span class="text-xs text-teal-800 font-bold block">Status Benda:</span>
+                            <span class="font-black text-teal-600 text-xl uppercase tracking-widest" id="out-3-status">TERAPUNG</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-sm text-center">
+                            <div class="bg-gray-50 p-2 rounded border border-gray-100">
+                                <span class="text-[10px] text-gray-500 block uppercase">Berat (W)</span>
+                                <span class="font-bold text-red-500" id="out-3-w">0</span><span class="text-xs"> N</span>
+                            </div>
+                            <div class="bg-gray-50 p-2 rounded border border-gray-100">
+                                <span class="text-[10px] text-gray-500 block uppercase">Gaya Apung (F<sub>A</sub>)</span>
+                                <span class="font-bold text-blue-500" id="out-3-fa">0</span><span class="text-xs"> N</span>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Kontrol Parameter (Bawah Tengah) -->
-            <div class="p-4 w-full max-w-2xl mx-auto mb-4">
-                <div class="glass-panel p-5 rounded-2xl shadow-xl pointer-events-auto cursor-default border border-gray-200">
-                    
-                    <div class="flex justify-between items-center mb-1">
-                        <div id="toggle-param-btn" class="flex items-center gap-2 cursor-pointer group">
-                            <svg id="icon-param" class="w-6 h-6 text-gray-500 group-hover:text-blue-500 transition-transform duration-300 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
-                            <h3 class="font-bold text-lg text-gray-800">Parameter Simulasi</h3>
-                        </div>
-                        <button id="btn-reset" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-md text-sm font-medium transition text-gray-700">Reset</button>
+            <!-- Bottom Center: Parameter Input -->
+            <div class="w-full max-w-xl mx-auto pointer-events-none mt-auto">
+                <div class="glass-panel p-4 md:p-5 rounded-2xl shadow-xl pointer-events-auto border border-gray-200 bg-white/95">
+                    <div class="flex justify-between items-center mb-3 border-b pb-2">
+                        <h3 class="font-bold text-base md:text-lg text-gray-800">Parameter Interaktif</h3>
+                        <button onclick="resetSim()" class="px-3 py-1 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded text-xs font-medium transition text-gray-700">Reset</button>
                     </div>
 
-                    <div id="content-param" class="overflow-hidden transition-all duration-300 max-h-[400px] opacity-100 space-y-4 pt-3">
-                        <!-- Fluid Selector -->
+                    <!-- Param 1: Hidrostatis -->
+                    <div id="param-1" class="block space-y-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1.5">Jenis Cairan</label>
-                            <select id="fluid-select" class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500 bg-gray-50 outline-none transition-shadow">
-                                <option value="1000" selected>Air (1000 kg/m³)</option>
-                                <option value="1025">Air Laut (1025 kg/m³)</option>
-                                <option value="800">Minyak (800 kg/m³)</option>
-                                <option value="1260">Gliserin (1260 kg/m³)</option>
-                                <option value="custom">Kustom...</option>
-                            </select>
-                        </div>
-                    <div class="space-y-4 pt-2">
-                        <!-- Density Slider -->
-                        <div id="density-control" class="hidden bg-blue-50 p-3 rounded-lg border border-blue-100">
-                            <div class="flex justify-between text-sm mb-2">
-                                <span class="font-medium text-blue-800">Massa Jenis (ρ)</span>
-                                <span class="font-mono text-blue-700 font-bold bg-white px-2 py-0.5 rounded border border-blue-200"><span id="val-density">1000</span> kg/m³</span>
+                            <div class="flex justify-between text-xs mb-1 font-medium text-gray-700">
+                                <span>Massa Jenis Cairan (ρ)</span>
+                                <span class="text-blue-600 font-bold bg-blue-50 px-2 rounded"><span id="val-1-rho">1000</span> kg/m³</span>
                             </div>
-                            <input type="range" id="slider-density" min="500" max="2000" step="10" value="1000" class="accent-blue-600 h-2">
+                            <input type="range" id="slide-1-rho" min="500" max="2000" step="50" value="1000" class="accent-blue-600">
                         </div>
-
-                        <!-- Gravity Slider -->
                         <div>
-                            <div class="flex justify-between text-sm mb-2">
-                                <span class="text-gray-600 font-medium">Percepatan Gravitasi (g)</span>
-                                <span class="font-mono text-gray-700"><span id="val-gravity">9.8</span> m/s²</span>
+                            <div class="flex justify-between text-xs mb-1 font-medium text-gray-700">
+                                <span>Gravitasi (g)</span>
+                                <span class="text-gray-600 font-bold"><span id="val-1-g">9.8</span> m/s²</span>
                             </div>
-                            <input type="range" id="slider-gravity" min="1.0" max="20.0" step="0.1" value="9.8" class="accent-gray-500 h-2">
+                            <input type="range" id="slide-1-g" min="1.0" max="20.0" step="0.1" value="9.8" class="accent-gray-500">
                         </div>
-
-                        <!-- Depth Slider -->
-                        <div class="pt-3 border-t border-gray-200">
-                            <div class="flex justify-between text-sm mb-2 items-center">
-                                <span class="font-bold text-blue-700 text-base">Kedalaman Sensor (h)</span>
-                                <span class="font-mono text-white bg-blue-600 px-3 py-1 rounded-md font-bold shadow-sm"><span id="val-depth">0.50</span> m</span>
+                        <div class="pt-2 border-t border-gray-100">
+                            <div class="flex justify-between text-sm mb-1 font-bold text-blue-800">
+                                <span>Kedalaman Sensor (h)</span>
+                                <span><span id="val-1-h">0.50</span> m</span>
                             </div>
-                            <input type="range" id="slider-depth" min="0.01" max="1.00" step="0.01" value="0.5" class="accent-blue-600 h-3">
-                            <div class="flex justify-between text-[10px] font-bold text-gray-400 mt-2 uppercase tracking-wider">
-                                <span>Atas (Permukaan)</span>
-                                <span>Bawah (Dasar)</span>
-                            </div>
+                            <input type="range" id="slide-1-h" min="0.01" max="1.00" step="0.01" value="0.5" class="accent-blue-600 h-3">
                         </div>
                     </div>
+
+                    <!-- Param 2: Pascal -->
+                    <div id="param-2" class="hidden space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <div class="flex justify-between text-xs mb-1 font-medium text-gray-700">
+                                    <span>Luas Kiri (A₁)</span>
+                                    <span class="text-indigo-600 font-bold"><span id="val-2-a1">0.05</span> m²</span>
+                                </div>
+                                <input type="range" id="slide-2-a1" min="0.01" max="0.10" step="0.01" value="0.05" class="accent-indigo-500">
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs mb-1 font-medium text-gray-700">
+                                    <span>Luas Kanan (A₂)</span>
+                                    <span class="text-indigo-600 font-bold"><span id="val-2-a2">0.20</span> m²</span>
+                                </div>
+                                <input type="range" id="slide-2-a2" min="0.10" max="1.00" step="0.05" value="0.20" class="accent-indigo-500">
+                            </div>
+                        </div>
+                        <div class="pt-2 border-t border-gray-100">
+                            <div class="flex justify-between text-sm mb-1 font-bold text-indigo-800">
+                                <span>Gaya Tekan Kiri (F₁)</span>
+                                <span><span id="val-2-f1">50</span> N</span>
+                            </div>
+                            <input type="range" id="slide-2-f1" min="0" max="200" step="10" value="50" class="accent-indigo-600 h-3">
+                        </div>
+                    </div>
+
+                    <!-- Param 3: Archimedes -->
+                    <div id="param-3" class="hidden space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <div class="flex justify-between text-[11px] mb-1 font-medium text-gray-700">
+                                    <span>Massa Jenis Benda</span>
+                                    <span class="text-teal-700 font-bold"><span id="val-3-rhob">500</span> kg/m³</span>
+                                </div>
+                                <input type="range" id="slide-3-rhob" min="100" max="3000" step="100" value="500" class="accent-teal-600">
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-[11px] mb-1 font-medium text-gray-700">
+                                    <span>Massa Jenis Cairan</span>
+                                    <span class="text-blue-600 font-bold"><span id="val-3-rhof">1000</span> kg/m³</span>
+                                </div>
+                                <input type="range" id="slide-3-rhof" min="500" max="1500" step="100" value="1000" class="accent-blue-500">
+                            </div>
+                        </div>
+                        <div class="pt-2 border-t border-gray-100">
+                            <div class="flex justify-between text-sm mb-1 font-bold text-teal-800">
+                                <span>Volume Benda (V)</span>
+                                <span><span id="val-3-v">0.005</span> m³</span>
+                            </div>
+                            <input type="range" id="slide-3-v" min="0.001" max="0.010" step="0.001" value="0.005" class="accent-teal-600 h-3">
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -266,666 +447,557 @@
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { ARButton } from 'three/addons/webxr/ARButton.js';
 
-        // --- STATE & DATA ---
+        // GLOBAL STATE
         const state = {
-            density: 1000,
-            gravity: 9.8,
-            depth: 0.5,
-            pressure: 0,
-            isARPlacing: true // Flag to check if we are waiting for user to place object in AR
+            menu: 1, // 1: Hidrostatis, 2: Pascal, 3: Archimedes
+            hydro: { rho: 1000, g: 9.8, h: 0.5, p: 0 },
+            pascal: { a1: 0.05, a2: 0.20, f1: 50, p: 0, f2: 0 },
+            arch: { rho_b: 500, rho_f: 1000, v: 0.005, g: 9.8, w: 0, fa: 0, status: '' },
+            isARPlacing: true,
+            records: { 1: 0, 2: 0, 3: 0 }
         };
 
-        const fluidColors = {
-            1000: 0x4dabf7, // Water (Blue)
-            1025: 0x3bc9db, // Sea water (Cyan)
-            800:  0xfcc419, // Oil (Yellow)
-            1260: 0xffa94d, // Glycerin (Orange)
-            'custom': 0xced4da // Gray default for custom
+        // DOM ELEMENTS
+        const getEl = id => document.getElementById(id);
+        
+        // Navigation
+        window.switchMenu = function(m) {
+            state.menu = m;
+            // Update Tabs
+            for(let i=1; i<=3; i++) {
+                const tab = getEl(`tab-${i}`);
+                if(i === m) {
+                    tab.classList.replace('tab-inactive', 'tab-active');
+                    getEl(`lkpd-${i}`).classList.replace('hidden', 'block');
+                    getEl(`hasil-${i}`).classList.replace('hidden', 'block');
+                    getEl(`param-${i}`).classList.replace('hidden', 'block');
+                } else {
+                    tab.classList.replace('tab-active', 'tab-inactive');
+                    getEl(`lkpd-${i}`).classList.replace('block', 'hidden');
+                    getEl(`hasil-${i}`).classList.replace('block', 'hidden');
+                    getEl(`param-${i}`).classList.replace('block', 'hidden');
+                }
+            }
+            // Update 3D Visibility
+            if(groupHydro) groupHydro.visible = (m === 1);
+            if(groupPascal) groupPascal.visible = (m === 2);
+            if(groupArch) groupArch.visible = (m === 3);
+            
+            calcPhysics();
         };
 
-        let recordCount = 0;
-
-        // --- DOM ELEMENTS ---
-        const ui = {
-            outPressure: document.getElementById('output-pressure'),
-            arOutPressure: document.getElementById('ar-output-pressure'),
-            valDensity: document.getElementById('val-density'),
-            valGravity: document.getElementById('val-gravity'),
-            valDepth: document.getElementById('val-depth'),
-            arValDepth: document.getElementById('ar-val-depth'),
-            
-            slideDensity: document.getElementById('slider-density'),
-            slideGravity: document.getElementById('slider-gravity'),
-            slideDepth: document.getElementById('slider-depth'),
-            arSlideDepth: document.getElementById('ar-slider-depth'),
-            
-            selFluid: document.getElementById('fluid-select'),
-            divDensityCtrl: document.getElementById('density-control'),
-            
-            btnReset: document.getElementById('btn-reset'),
-            btnRecord: document.getElementById('btn-record'),
-            tableBody: document.getElementById('data-table-body'),
-            
-            arInstruction: document.getElementById('ar-instruction'),
-            btnExitAR: document.getElementById('btn-exit-ar')
+        window.resetSim = function() {
+            if(state.menu === 1) {
+                getEl('slide-1-rho').value = 1000;
+                getEl('slide-1-g').value = 9.8;
+                getEl('slide-1-h').value = 0.5;
+                getEl('slide-1-h').dispatchEvent(new Event('input'));
+            } else if(state.menu === 2) {
+                getEl('slide-2-a1').value = 0.05;
+                getEl('slide-2-a2').value = 0.20;
+                getEl('slide-2-f1').value = 50;
+                getEl('slide-2-f1').dispatchEvent(new Event('input'));
+            } else if(state.menu === 3) {
+                getEl('slide-3-rhob').value = 500;
+                getEl('slide-3-rhof').value = 1000;
+                getEl('slide-3-v').value = 0.005;
+                getEl('slide-3-v').dispatchEvent(new Event('input'));
+            }
         };
 
-        // --- CHART SETUP ---
+        // UI Binding Setup
+        function bindSlider(id, obj, prop, isFloat = true) {
+            getEl(id).addEventListener('input', (e) => {
+                state[obj][prop] = isFloat ? parseFloat(e.target.value) : parseInt(e.target.value);
+                calcPhysics();
+            });
+        }
+        
+        // Bind Menu 1
+        bindSlider('slide-1-rho', 'hydro', 'rho', false);
+        bindSlider('slide-1-g', 'hydro', 'g');
+        bindSlider('slide-1-h', 'hydro', 'h');
+        
+        // Bind Menu 2
+        bindSlider('slide-2-a1', 'pascal', 'a1');
+        bindSlider('slide-2-a2', 'pascal', 'a2');
+        bindSlider('slide-2-f1', 'pascal', 'f1', false);
+        
+        // Bind Menu 3
+        bindSlider('slide-3-rhob', 'arch', 'rho_b', false);
+        bindSlider('slide-3-rhof', 'arch', 'rho_f', false);
+        bindSlider('slide-3-v', 'arch', 'v');
+
+        function calcPhysics() {
+            if(state.menu === 1) {
+                state.hydro.p = state.hydro.rho * state.hydro.g * state.hydro.h;
+                
+                getEl('val-1-rho').innerText = state.hydro.rho;
+                getEl('val-1-g').innerText = state.hydro.g.toFixed(1);
+                getEl('val-1-h').innerText = state.hydro.h.toFixed(2);
+                getEl('out-1-p').innerText = state.hydro.p.toLocaleString('id-ID', {maximumFractionDigits:0});
+                
+                updateChart();
+                updateHydro3D();
+                
+            } else if(state.menu === 2) {
+                state.pascal.p = state.pascal.f1 / state.pascal.a1;
+                state.pascal.f2 = state.pascal.p * state.pascal.a2;
+                
+                getEl('val-2-a1').innerText = state.pascal.a1.toFixed(2);
+                getEl('val-2-a2').innerText = state.pascal.a2.toFixed(2);
+                getEl('val-2-f1').innerText = state.pascal.f1;
+                getEl('out-2-p').innerText = state.pascal.p.toLocaleString('id-ID', {maximumFractionDigits:0});
+                getEl('out-2-f2').innerText = state.pascal.f2.toLocaleString('id-ID', {maximumFractionDigits:0});
+                
+                updatePascal3D();
+                
+            } else if(state.menu === 3) {
+                const s = state.arch;
+                s.w = s.rho_b * s.v * s.g;
+                
+                if (s.rho_b < s.rho_f) {
+                    s.status = 'TERAPUNG';
+                    s.fa = s.w; 
+                } else if (s.rho_b === s.rho_f) {
+                    s.status = 'MELAYANG';
+                    s.fa = s.w;
+                } else {
+                    s.status = 'TENGGELAM';
+                    s.fa = s.rho_f * s.v * s.g;
+                }
+                
+                getEl('val-3-rhob').innerText = s.rho_b;
+                getEl('val-3-rhof').innerText = s.rho_f;
+                getEl('val-3-v').innerText = s.v.toFixed(3);
+                
+                const statEl = getEl('out-3-status');
+                statEl.innerText = s.status;
+                statEl.className = `font-black text-xl uppercase tracking-widest ${s.status==='TENGGELAM'?'text-red-600':s.status==='MELAYANG'?'text-yellow-600':'text-teal-600'}`;
+                
+                getEl('out-3-w').innerText = s.w.toFixed(2);
+                getEl('out-3-fa').innerText = s.fa.toFixed(2);
+                
+                updateArch3D();
+            }
+        }
+
+        // Data Recording
+        function setupRecording() {
+            getEl('btn-record-1').onclick = () => {
+                state.records[1]++;
+                getEl('table-body-1').insertAdjacentHTML('beforeend', `<tr class="border-b hover:bg-blue-50 text-center"><td class="border p-2">${state.records[1]}</td><td class="border p-2">${state.hydro.rho}</td><td class="border p-2">${state.hydro.h.toFixed(2)}</td><td class="border p-2 font-bold text-blue-600">${state.hydro.p.toFixed(0)}</td></tr>`);
+            };
+            getEl('btn-record-2').onclick = () => {
+                const tr = document.createElement('tr'); tr.className="border-b text-center hover:bg-indigo-50";
+                tr.innerHTML = `<td class="border p-1">${state.pascal.a1.toFixed(2)}</td><td class="border p-1">${state.pascal.f1}</td><td class="border p-1 bg-indigo-50">${state.pascal.a2.toFixed(2)}</td><td class="border p-1 bg-indigo-50 font-bold text-indigo-700">${state.pascal.f2.toFixed(0)}</td><td class="border p-1 text-gray-500">${state.pascal.p.toFixed(0)}</td>`;
+                getEl('table-body-2').appendChild(tr);
+            };
+            getEl('btn-record-3').onclick = () => {
+                const s = state.arch;
+                const tr = document.createElement('tr'); tr.className="border-b text-center hover:bg-teal-50";
+                tr.innerHTML = `<td class="border p-1">${s.rho_f}</td><td class="border p-1">${s.rho_b}</td><td class="border p-1 text-red-600">${s.w.toFixed(2)}</td><td class="border p-1 text-blue-600">${s.fa.toFixed(2)}</td><td class="border p-1 text-[9px] font-bold">${s.status}</td>`;
+                getEl('table-body-3').appendChild(tr);
+            };
+        }
+        setupRecording();
+
+        // Chart.js (Only for Hydro)
         let pressureChart;
         function initChart() {
-            const ctx = document.getElementById('pressure-chart').getContext('2d');
+            const ctx = getEl('pressure-chart').getContext('2d');
             pressureChart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: [0, 0.2, 0.4, 0.6, 0.8, 1.0], // Depth intervals
-                    datasets: [{
-                        label: 'Tekanan (Pa)',
-                        data: [],
-                        borderColor: 'rgb(59, 130, 246)',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.1,
-                        fill: true,
-                        pointRadius: 0 // Hide default points
-                    }, {
-                        label: 'Posisi Saat Ini',
-                        data: [],
-                        backgroundColor: 'rgb(239, 68, 68)', // Red point
-                        borderColor: 'rgb(255, 255, 255)',
-                        borderWidth: 2,
-                        pointRadius: 6,
-                        showLine: false
-                    }]
+                    labels: [0, 0.2, 0.4, 0.6, 0.8, 1.0],
+                    datasets: [{ label: 'Tekanan', data: [], borderColor: '#3b82f6', backgroundColor: '#bfdbfe', borderWidth: 2, fill: true, pointRadius:0 },
+                               { label: 'Posisi', data: [], backgroundColor: '#ef4444', showLine: false, pointRadius: 6 }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: { title: { display: true, text: 'Kedalaman (m)', font: {size: 10} }, ticks: {font: {size: 9}} },
-                        y: { title: { display: false }, ticks: {font: {size: 9}}, suggestedMin: 0 }
-                    },
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: { enabled: false }
-                    },
-                    animation: { duration: 300 } // smooth updates
-                }
+                options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'h(m)', font:{size:10} } }, y: { display:false } }, plugins: { legend: { display: false } }, animation: { duration: 300 } }
             });
         }
-
-        // --- UPDATE LOGIC ---
-        function calculatePhysics() {
-            // P = rho * g * h
-            state.pressure = state.density * state.gravity * state.depth;
-            updateUI();
-            update3DScene();
-            updateChart();
-        }
-
-        function updateUI() {
-            const pStr = state.pressure.toLocaleString('id-ID', { maximumFractionDigits: 0 });
-            ui.outPressure.innerText = pStr;
-            ui.arOutPressure.innerText = pStr;
-            
-            ui.valDensity.innerText = state.density;
-            ui.valGravity.innerText = state.gravity.toFixed(1);
-            
-            const hStr = state.depth.toFixed(2);
-            ui.valDepth.innerText = hStr;
-            ui.arValDepth.innerText = hStr;
-            
-            // Sync sliders
-            if(ui.slideDepth.value != state.depth) ui.slideDepth.value = state.depth;
-            if(ui.arSlideDepth.value != state.depth) ui.arSlideDepth.value = state.depth;
-        }
-
         function updateChart() {
             if(!pressureChart) return;
-            
-            // Generate theoretical line based on current rho and g
-            const lineData = [];
-            for (let h = 0; h <= 1; h += 0.2) {
-                lineData.push({ x: h, y: state.density * state.gravity * h });
-            }
-            
-            // Current point
-            const currentPoint = [{ x: state.depth, y: state.pressure }];
-
-            // Update chart labels/data to match continuous X axis approach using scatter-like plotting in line chart
-            // Chart.js requires mapping to labels array indices for simple line charts, 
-            // but we can map exact values by just updating the 'data' array if labels match linearly.
-            
-            const newData = [0, 0.2, 0.4, 0.6, 0.8, 1.0].map(h => state.density * state.gravity * h);
-            pressureChart.data.datasets[0].data = newData;
-            
-            // Simulate the dot by making all points invisible except the closest one, 
-            // or use a plugin. For simplicity, we just update the line. The dot is hard in basic categorical line chart.
-            // Let's change dataset 1 to a scatter dataset just for the point.
-            pressureChart.data.datasets[1].data = [{x: state.depth, y: state.pressure}];
-            // Actually mixed charts need specific config. We'll stick to updating the line.
-            
+            pressureChart.data.datasets[0].data = [0, 0.2, 0.4, 0.6, 0.8, 1.0].map(h => state.hydro.rho * state.hydro.g * h);
+            pressureChart.data.datasets[1].data = [{x: state.hydro.h, y: state.hydro.p}];
             pressureChart.update();
         }
 
-        // --- EVENT LISTENERS ---
-        ui.slideDensity.addEventListener('input', (e) => {
-            state.density = parseFloat(e.target.value);
-            updateFluidColor('custom');
-            calculatePhysics();
-        });
-
-        ui.slideGravity.addEventListener('input', (e) => {
-            state.gravity = parseFloat(e.target.value);
-            calculatePhysics();
-        });
-
-        ui.slideDepth.addEventListener('input', (e) => {
-            state.depth = parseFloat(e.target.value);
-            calculatePhysics();
-        });
-        
-        ui.arSlideDepth.addEventListener('input', (e) => {
-            state.depth = parseFloat(e.target.value);
-            calculatePhysics();
-        });
-
-        ui.selFluid.addEventListener('change', (e) => {
-            const val = e.target.value;
-            if (val === 'custom') {
-                ui.divDensityCtrl.classList.remove('hidden');
-                // state.density remains whatever it was on the slider
-            } else {
-                ui.divDensityCtrl.classList.add('hidden');
-                state.density = parseFloat(val);
-                ui.slideDensity.value = state.density;
-                updateFluidColor(val);
-            }
-            calculatePhysics();
-        });
-
-        ui.btnReset.addEventListener('click', () => {
-            ui.selFluid.value = "1000";
-            ui.selFluid.dispatchEvent(new Event('change'));
-            ui.slideGravity.value = 9.8;
-            ui.slideDepth.value = 0.5;
-            ui.slideGravity.dispatchEvent(new Event('input'));
-            ui.slideDepth.dispatchEvent(new Event('input'));
-        });
-
-        ui.btnRecord.addEventListener('click', () => {
-            recordCount++;
-            const row = document.createElement('tr');
-            row.className = "border-b hover:bg-blue-50";
-            row.innerHTML = `
-                <td class="border p-2 text-center">${recordCount}</td>
-                <td class="border p-2 text-center">${state.density}</td>
-                <td class="border p-2 text-center">${state.depth.toFixed(2)}</td>
-                <td class="border p-2 text-center font-semibold text-blue-600">${state.pressure.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</td>
-            `;
-            ui.tableBody.appendChild(row);
-            
-            // Scroll to bottom
-            const tableContainer = ui.tableBody.parentElement.parentElement;
-            tableContainer.scrollTop = tableContainer.scrollHeight;
-        });
-
-        // --- LOGIKA MINIMIZE PANEL LKPD ---
-        const btnToggleSide = document.getElementById('btn-toggle-side');
-        const btnToggleBottom = document.getElementById('btn-toggle-bottom');
-        const lkpdPanel = document.getElementById('lkpd-panel');
-        const iconChevronSide = document.getElementById('icon-chevron-side');
-        const iconChevronBottom = document.getElementById('icon-chevron-bottom');
+        // Sidebar Toggle Logic
+        const lkpdPanel = getEl('lkpd-panel');
         let isPanelMinimized = false;
-
         function togglePanel() {
             isPanelMinimized = !isPanelMinimized;
-            
             if (isPanelMinimized) {
-                // Sembunyikan panel
                 lkpdPanel.classList.add('panel-minimized');
-                
-                // Putar ikon panah ke arah berlawanan
-                iconChevronSide.classList.add('rotate-180'); 
-                iconChevronBottom.classList.remove('-rotate-90');
-                iconChevronBottom.classList.add('rotate-90');
+                getEl('icon-chevron-side').classList.add('rotate-180'); 
+                getEl('icon-chevron-bottom').classList.replace('-rotate-90', 'rotate-90');
             } else {
-                // Tampilkan panel
                 lkpdPanel.classList.remove('panel-minimized');
-                
-                // Kembalikan ikon panah ke posisi awal
-                iconChevronSide.classList.remove('rotate-180');
-                iconChevronBottom.classList.remove('rotate-90');
-                iconChevronBottom.classList.add('-rotate-90');
+                getEl('icon-chevron-side').classList.remove('rotate-180');
+                getEl('icon-chevron-bottom').classList.replace('rotate-90', '-rotate-90');
             }
-            
-            // Pemicu resize event pada window setelah animasi selesai (0.4 detik) 
-            // Hal ini agar kanvas 3D (Three.js) sadar bahwa ruangnya bertambah lebar 
-            // dan merender ulang ukurannya tanpa harus refresh halaman.
-            setTimeout(() => {
-                window.dispatchEvent(new Event('resize'));
-            }, 400); 
+            setTimeout(() => window.dispatchEvent(new Event('resize')), 400); 
         }
+        getEl('btn-toggle-side').onclick = togglePanel;
+        getEl('btn-toggle-bottom').onclick = togglePanel;
 
-        // Daftarkan event klik pada kedua tombol (Desktop & Mobile)
-        if(btnToggleSide) btnToggleSide.addEventListener('click', togglePanel);
-        if(btnToggleBottom) btnToggleBottom.addEventListener('click', togglePanel);
-
-        // --- LOGIKA MINIMIZE PANEL KANAN (HASIL & PARAMETER) ---
-        const btnToggleHasil = document.getElementById('toggle-hasil-btn');
-        const contentHasil = document.getElementById('content-hasil');
-        const iconHasil = document.getElementById('icon-hasil');
-        let isHasilMinimized = false;
-
-        btnToggleHasil.addEventListener('click', () => {
-            isHasilMinimized = !isHasilMinimized;
-            if(isHasilMinimized) {
-                contentHasil.style.maxHeight = '0px';
-                contentHasil.style.opacity = '0';
-                contentHasil.style.marginTop = '0px';
-                iconHasil.classList.remove('rotate-180');
-            } else {
-                contentHasil.style.maxHeight = '300px';
-                contentHasil.style.opacity = '1';
-                contentHasil.style.marginTop = '0.25rem'; 
-                iconHasil.classList.add('rotate-180');
-            }
-        });
-
-        const btnToggleParam = document.getElementById('toggle-param-btn');
-        const contentParam = document.getElementById('content-param');
-        const iconParam = document.getElementById('icon-param');
-        let isParamMinimized = false;
-
-        btnToggleParam.addEventListener('click', () => {
-            isParamMinimized = !isParamMinimized;
-            if(isParamMinimized) {
-                contentParam.style.maxHeight = '0px';
-                contentParam.style.opacity = '0';
-                contentParam.style.paddingTop = '0px';
-                iconParam.classList.remove('rotate-180');
-            } else {
-                contentParam.style.maxHeight = '400px';
-                contentParam.style.opacity = '1';
-                contentParam.style.paddingTop = '0.75rem'; 
-                iconParam.classList.add('rotate-180');
-            }
-        });
-
-        // --- THREE.JS & WEBXR SETUP ---
-        let camera, scene, renderer;
-        let controller, reticle;
-        let hitTestSource = null;
-        let hitTestSourceRequested = false;
+        let camera, scene, renderer, controls, clock;
+        let reticle, controller, hitTestSource = null, hitTestSourceRequested = false;
         
-        // 3D Objects
-        let mainGroup; // Holds the entire experiment
-        let fluidMesh;
-        let sensorSphere;
-        let arrowGroup;
-        let surfacePlane;
+        // 3D Groups
+        let arRootGroup; // Wraps everything to easily place in AR
+        let groupHydro, groupPascal, groupArch;
         
-        // Constants for 3D mapping
-        const CONTAINER_HEIGHT = 1.0; // 1 logical meter
-        const CONTAINER_RADIUS = 0.3;
-        const FLUID_MAX_HEIGHT = 0.9; // Fluid surface level
-        
+        // Hydro Objects
+        let hydroSensor, hydroArrows;
+        // Pascal Objects
+        let pasPist1, pasPist2, pasTube1, pasTube2;
+        // Arch Objects
+        let archCube, archFluid, arrW, arrFA;
+
         init3D();
-        animate();
-
+        
         function init3D() {
-            const container = document.getElementById('ar-container');
-            const canvas = document.getElementById('webgl-canvas');
+            const container = getEl('ar-container');
+            const canvas = getEl('webgl-canvas');
 
             scene = new THREE.Scene();
-            // Background light gray agar tabung lebih terlihat jelas
             scene.background = new THREE.Color(0xe5e7eb); 
 
             camera = new THREE.PerspectiveCamera( 50, container.clientWidth / container.clientHeight, 0.01, 20 );
             camera.position.set( 1.5, 1.2, 2 );
 
-            // Lighting
             const light = new THREE.HemisphereLight( 0xffffff, 0xbbbbff, 1 );
             light.position.set( 0.5, 1, 0.25 );
             scene.add( light );
-            
             const dirLight = new THREE.DirectionalLight( 0xffffff, 1.5 );
             dirLight.position.set( 2, 5, 2 );
             dirLight.castShadow = true;
             scene.add( dirLight );
 
-            // Renderer
             renderer = new THREE.WebGLRenderer( { canvas: canvas, antialias: true, alpha: true } );
             renderer.setPixelRatio( window.devicePixelRatio );
             renderer.setSize( container.clientWidth, container.clientHeight );
             renderer.shadowMap.enabled = true;
-            renderer.xr.enabled = true; // Enable WebXR
+            renderer.xr.enabled = true;
 
-            // Orbit Controls (Memungkinkan Zoom dan Rotasi via Mouse/Touch)
-            const controls = new OrbitControls( camera, renderer.domElement );
-            controls.target.set( 0, 0.45, 0 ); // Titik pusat rotasi berada di tengah tabung
-            controls.enableDamping = true; // Gerakan rotasi halus
-            controls.dampingFactor = 0.05;
-            controls.minDistance = 0.8; // Batas zoom paling dekat
-            controls.maxDistance = 4;   // Batas zoom paling jauh
-            controls.enablePan = true;  // Memungkinkan geser (klik kanan/2 jari)
-            controls.update();
+            controls = new OrbitControls( camera, renderer.domElement );
+            controls.target.set( 0, 0.45, 0 );
+            controls.enableDamping = true;
+            controls.minDistance = 0.5; controls.maxDistance = 5;
             
-            window.appControls = controls;
+            arRootGroup = new THREE.Group();
+            scene.add(arRootGroup);
 
-            // Build the Experiment Model
-            buildExperimentModel();
+            // Build Individual Scenes
+            buildHydroScene();
+            buildPascalScene();
+            buildArchScene();
+            
+            // Set Initial Vis
+            switchMenu(1);
 
-            // Setup AR
             setupAR();
-
             window.addEventListener( 'resize', onWindowResize );
+            
+            clock = new THREE.Clock();
+            renderer.setAnimationLoop( render );
+            
+            initChart();
+            calcPhysics();
         }
 
-        function buildExperimentModel() {
-            // Main group that will be placed in AR
-            mainGroup = new THREE.Group();
+        function buildHydroScene() {
+            groupHydro = new THREE.Group();
             
-            // 1. Container (Glass Cylinder)
-            const glassGeo = new THREE.CylinderGeometry( CONTAINER_RADIUS, CONTAINER_RADIUS, CONTAINER_HEIGHT, 32 );
-            // Translate geometry so origin is at the bottom
-            glassGeo.translate(0, CONTAINER_HEIGHT/2, 0); 
-            const glassMat = new THREE.MeshPhysicalMaterial({
-                color: 0xffffff,
-                transmission: 0.9,
-                opacity: 1,
-                metalness: 0,
-                roughness: 0,
-                ior: 1.5,
-                thickness: 0.05,
-                side: THREE.DoubleSide,
-                transparent: true
-            });
-            const glassMesh = new THREE.Mesh( glassGeo, glassMat );
-            glassMesh.receiveShadow = true;
-            glassMesh.castShadow = true;
-            mainGroup.add(glassMesh);
+            // Container
+            const gMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 0.9, opacity: 1, roughness: 0, transparent: true, side: THREE.DoubleSide});
+            const glass = new THREE.Mesh( new THREE.CylinderGeometry(0.3, 0.3, 1.0, 32).translate(0, 0.5, 0), gMat );
+            groupHydro.add(glass);
 
-            // Add measurement lines on the glass
-            const lineMat = new THREE.LineBasicMaterial({ color: 0x000000 });
-            for(let i=0.1; i<=0.9; i+=0.1) {
-                const ringGeo = new THREE.RingGeometry(CONTAINER_RADIUS, CONTAINER_RADIUS+0.005, 32);
-                const ringMesh = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({color: 0x333333, side: THREE.DoubleSide}));
-                ringMesh.rotation.x = Math.PI / 2;
-                ringMesh.position.y = i;
-                mainGroup.add(ringMesh);
-            }
+            // Fluid
+            const fMat = new THREE.MeshPhysicalMaterial({ color: 0x4dabf7, transmission: 0.6, transparent: true });
+            const fluid = new THREE.Mesh( new THREE.CylinderGeometry(0.29, 0.29, 0.9, 32).translate(0, 0.45, 0), fMat );
+            groupHydro.add(fluid);
 
-            // 2. Fluid (Inner Cylinder)
-            const fluidGeo = new THREE.CylinderGeometry( CONTAINER_RADIUS - 0.01, CONTAINER_RADIUS - 0.01, FLUID_MAX_HEIGHT, 32 );
-            fluidGeo.translate(0, FLUID_MAX_HEIGHT/2, 0);
-            const fluidMat = new THREE.MeshPhysicalMaterial({
-                color: fluidColors[1000],
-                transmission: 0.6,
-                transparent: true,
-                roughness: 0.1
-            });
-            fluidMesh = new THREE.Mesh( fluidGeo, fluidMat );
-            mainGroup.add(fluidMesh);
-            
-            // Fluid Surface helper (to make surface visible)
-            const surfaceGeo = new THREE.CircleGeometry(CONTAINER_RADIUS - 0.01, 32);
-            surfacePlane = new THREE.Mesh(surfaceGeo, new THREE.MeshBasicMaterial({color: 0xffffff, transparent:true, opacity:0.3}));
-            surfacePlane.rotation.x = -Math.PI / 2;
-            surfacePlane.position.y = FLUID_MAX_HEIGHT;
-            mainGroup.add(surfacePlane);
+            // Sensor
+            hydroArrows = new THREE.Group();
+            hydroSensor = new THREE.Mesh( new THREE.SphereGeometry( 0.03, 16, 16 ), new THREE.MeshStandardMaterial({color:0xff0000}) );
+            hydroArrows.add(hydroSensor);
 
-            // 3. Sensor & Arrows Group
-            arrowGroup = new THREE.Group();
-            
-            // Sensor Sphere
-            const sphereGeo = new THREE.SphereGeometry( 0.03, 16, 16 );
-            const sphereMat = new THREE.MeshStandardMaterial( { color: 0xff0000, emissive: 0x440000 } );
-            sensorSphere = new THREE.Mesh( sphereGeo, sphereMat );
-            arrowGroup.add(sensorSphere);
-
-            // Pressure Arrows pointing inward
-            const arrowLength = 0.2;
-            const arrowColor = 0xff0000;
-            const headLength = 0.05;
-            const headWidth = 0.04;
-            
-            // Top, Bottom, Left, Right arrows
-            const dirs = [
-                new THREE.Vector3(0, -1, 0), // from top pointing down
-                new THREE.Vector3(0, 1, 0),  // from bottom pointing up
-                new THREE.Vector3(1, 0, 0),  // from left pointing right
-                new THREE.Vector3(-1, 0, 0), // from right pointing left
-                new THREE.Vector3(0, 0, 1),
-                new THREE.Vector3(0, 0, -1)
-            ];
-
-            dirs.forEach(dir => {
-                // To point INWARD to the center, origin is offset, direction is opposite to offset
-                const origin = dir.clone().multiplyScalar(-arrowLength);
-                const arrowHelper = new THREE.ArrowHelper( dir, origin, arrowLength, arrowColor, headLength, headWidth );
-                // Store original properties for scaling later
-                arrowHelper.userData = { 
-                    baseOrigin: origin.clone(), 
-                    baseDir: dir.clone() 
-                };
-                arrowGroup.add( arrowHelper );
+            const dirs = [ [0,-1,0], [0,1,0], [1,0,0], [-1,0,0], [0,0,1], [0,0,-1] ];
+            dirs.forEach(d => {
+                const v = new THREE.Vector3(...d);
+                const ah = new THREE.ArrowHelper( v, v.clone().multiplyScalar(-0.2), 0.2, 0xff0000, 0.05, 0.04 );
+                ah.userData = { baseDir: v.clone() };
+                hydroArrows.add(ah);
             });
 
-            mainGroup.add(arrowGroup);
-            
-            // Initially place it in center for 3D mode
-            scene.add(mainGroup);
-            
-            // Initial update
-            update3DScene();
+            groupHydro.add(hydroArrows);
+            arRootGroup.add(groupHydro);
         }
 
-        function updateFluidColor(type) {
-            if(!fluidMesh) return;
-            let hex = fluidColors['custom'];
-            if(fluidColors[type]) {
-                hex = fluidColors[type];
-            }
-            // Smooth color transition could be added here, but direct setting is fine
-            fluidMesh.material.color.setHex(hex);
-        }
-
-        function update3DScene() {
-            if(!arrowGroup || !sensorSphere) return;
-
-            // 1. Update Sensor Position
-            // h is depth from surface.
-            // Surface is at Y = FLUID_MAX_HEIGHT (0.9)
-            // Sensor Y = FLUID_MAX_HEIGHT - h
-            let sensorY = FLUID_MAX_HEIGHT - state.depth;
+        function updateHydro3D() {
+            if(!hydroArrows) return;
+            const h = state.hydro.h;
+            // Surface is at 0.9, depth is from surface down
+            let sy = 0.9 - h;
+            if(sy < 0.05) sy = 0.05;
+            hydroArrows.position.y = sy;
             
-            // Clamp sensorY just in case
-            if(sensorY < 0.05) sensorY = 0.05; // don't go below container
-            if(sensorY > FLUID_MAX_HEIGHT) sensorY = FLUID_MAX_HEIGHT;
+            let scale = 0.2 + (state.hydro.p / 15000);
+            if(scale > 1.2) scale = 1.2;
+            hydroArrows.visible = state.hydro.p > 0;
             
-            // Animate position smoothly (simple lerp in render loop is better, but direct set is OK for now)
-            arrowGroup.position.y = sensorY;
-
-            // 2. Update Arrows Size based on Pressure
-            // Max theoretical pressure in normal app usage: 2000 (rho) * 20 (g) * 1 (h) = 40000
-            // Normal water at 1m: 1000 * 9.8 * 1 = 9800
-            const maxPressureRef = 15000; 
-            
-            // Scale factor: small minimum scale even at 0 depth, grows linearly
-            let scale = 0.2 + (state.pressure / maxPressureRef);
-            // Cap scale so arrows don't stick out of the glass
-            if(scale > 1.2) scale = 1.2; 
-            
-            // Only show arrows if pressure > 0
-            arrowGroup.visible = state.pressure > 0;
-
-            // Apply scale to arrows. 
-            // We need to scale the ArrowHelpers appropriately
-            arrowGroup.children.forEach(child => {
-                if(child instanceof THREE.ArrowHelper) {
-                    const newLength = 0.1 * scale;
-                    // Keep arrow head visible
-                    child.setLength(newLength, 0.05, 0.04);
-                    // Move origin so tip touches sensor
-                    const newOrigin = child.userData.baseDir.clone().multiplyScalar(-newLength);
-                    child.position.copy(newOrigin);
+            hydroArrows.children.forEach(c => {
+                if(c instanceof THREE.ArrowHelper) {
+                    const l = 0.1 * scale;
+                    c.setLength(l, 0.05, 0.04);
+                    c.position.copy(c.userData.baseDir.clone().multiplyScalar(-l));
                 }
             });
+            hydroArrows.userData.pScale = scale;
+        }
+
+        function buildPascalScene() {
+            groupPascal = new THREE.Group();
             
-            // Pulse animation state
-            arrowGroup.userData.pulseScale = scale;
+            // Base pipe
+            const basePipe = new THREE.Mesh( new THREE.BoxGeometry(0.8, 0.1, 0.2).translate(0, 0.05, 0), new THREE.MeshStandardMaterial({color: 0x64748b}) );
+            groupPascal.add(basePipe);
+            
+            // Tubes (Left and Right)
+            const tubeMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 0.9, transparent: true, side: THREE.DoubleSide });
+            pasTube1 = new THREE.Mesh( new THREE.CylinderGeometry(0.1, 0.1, 0.6, 32).translate(0, 0.3, 0), tubeMat );
+            pasTube1.position.set(-0.3, 0.1, 0);
+            
+            pasTube2 = new THREE.Mesh( new THREE.CylinderGeometry(0.2, 0.2, 0.6, 32).translate(0, 0.3, 0), tubeMat );
+            pasTube2.position.set(0.3, 0.1, 0);
+            
+            groupPascal.add(pasTube1, pasTube2);
+            
+            // Pistons
+            const pistMat = new THREE.MeshStandardMaterial({color: 0x334155, metalness: 0.8, roughness: 0.2});
+            pasPist1 = new THREE.Mesh( new THREE.CylinderGeometry(0.1, 0.1, 0.05, 32), pistMat );
+            pasPist2 = new THREE.Mesh( new THREE.CylinderGeometry(0.2, 0.2, 0.05, 32), pistMat );
+            
+            // Piston Handles/Weights visual
+            const rod1 = new THREE.Mesh( new THREE.CylinderGeometry(0.02, 0.02, 0.3).translate(0,0.15,0), pistMat );
+            pasPist1.add(rod1);
+            const w1 = new THREE.Mesh( new THREE.BoxGeometry(0.1,0.05,0.1).translate(0,0.325,0), new THREE.MeshStandardMaterial({color:0xff0000}) );
+            pasPist1.add(w1);
+            
+            const rod2 = new THREE.Mesh( new THREE.CylinderGeometry(0.04, 0.04, 0.2).translate(0,0.1,0), pistMat );
+            pasPist2.add(rod2);
+            const w2 = new THREE.Mesh( new THREE.BoxGeometry(0.3,0.05,0.3).translate(0,0.225,0), new THREE.MeshStandardMaterial({color:0x3b82f6}) );
+            pasPist2.add(w2);
+
+            groupPascal.add(pasPist1, pasPist2);
+            
+            // Add to root, default hidden
+            groupPascal.visible = false;
+            arRootGroup.add(groupPascal);
+        }
+
+        function updatePascal3D() {
+            if(!pasPist1) return;
+            const s = state.pascal;
+            
+            // Map A to visual radius. Visual area logic: r = sqrt(A/pi).
+            // Let's scale it so A=0.01 -> r~0.08, A=1.0 -> r~0.3
+            const r1 = Math.sqrt(s.a1 / Math.PI) * 1.5; 
+            const r2 = Math.sqrt(s.a2 / Math.PI) * 1.5;
+            
+            // Update tube scales (X and Z)
+            // base radius is 0.1 for tube1, 0.2 for tube2
+            pasTube1.scale.set(r1/0.1, 1, r1/0.1);
+            pasPist1.scale.set(r1/0.1, 1, r1/0.1);
+            
+            pasTube2.scale.set(r2/0.2, 1, r2/0.2);
+            pasPist2.scale.set(r2/0.2, 1, r2/0.2);
+            
+            // Piston movement logic based on F1
+            // Max F1 = 200. Max drop = 0.25 meters.
+            const maxDrop = 0.25;
+            const drop = (s.f1 / 200) * maxDrop;
+            
+            // Left piston goes down
+            const baseYPist1 = 0.55; 
+            pasPist1.position.set(-0.3, baseYPist1 - drop, 0);
+            
+            // Right piston goes up based on volume displaced
+            // V_displaced = A1 * drop. Upward_h = V_displaced / A2 = drop * (A1/A2)
+            const rise = drop * (s.a1 / s.a2);
+            const baseYPist2 = 0.35; // starts slightly lower
+            pasPist2.position.set(0.3, baseYPist2 + rise, 0);
+        }
+
+        function buildArchScene() {
+            groupArch = new THREE.Group();
+            
+            // Container (reuse glass logic)
+            const gMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 0.9, transparent: true, side: THREE.DoubleSide});
+            const glass = new THREE.Mesh( new THREE.CylinderGeometry(0.3, 0.3, 1.0, 32).translate(0, 0.5, 0), gMat );
+            groupArch.add(glass);
+            
+            archFluid = new THREE.Mesh( new THREE.CylinderGeometry(0.29, 0.29, 0.8, 32).translate(0, 0.4, 0), new THREE.MeshPhysicalMaterial({ color: 0x0ea5e9, transmission: 0.6, transparent: true }) );
+            groupArch.add(archFluid);
+
+            // Object Cube
+            archCube = new THREE.Mesh( new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({color: 0xeab308, roughness: 0.4}) );
+            
+            // Arrows for Forces
+            arrW = new THREE.ArrowHelper( new THREE.Vector3(0,-1,0), new THREE.Vector3(0,0,0), 0.3, 0xdc2626, 0.05, 0.04 ); // Down Red
+            arrFA = new THREE.ArrowHelper( new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,0), 0.3, 0x2563eb, 0.05, 0.04 ); // Up Blue
+            archCube.add(arrW, arrFA);
+            
+            groupArch.add(archCube);
+            
+            groupArch.visible = false;
+            arRootGroup.add(groupArch);
+        }
+
+        function updateArch3D() {
+            if(!archCube) return;
+            const s = state.arch;
+            
+            // Cube Size based on V. 0.001 to 0.01 mapped to visual 0.1 to 0.25
+            const side = Math.cbrt(s.v) * 1.2; 
+            archCube.scale.set(side, side, side);
+            
+            // Adjust fluid color based on density (just a nice touch)
+            const fColor = s.rho_f === 1000 ? 0x0ea5e9 : (s.rho_f < 1000 ? 0xfcd34d : 0x0284c7);
+            archFluid.material.color.setHex(fColor);
+            
+            // Position Y Logic
+            const fluidSurface = 0.8;
+            let targetY = 0;
+            
+            if (s.status === 'TERAPUNG') {
+                // V_celup = (rho_b/rho_f) * V
+                // height submerged = side * (rho_b/rho_f)
+                const h_sub = side * (s.rho_b / s.rho_f);
+                targetY = fluidSurface - h_sub + (side/2);
+            } else if (s.status === 'MELAYANG') {
+                targetY = fluidSurface / 2; // Middle
+            } else {
+                targetY = (side/2) + 0.02; // Bottom resting
+            }
+            
+            archCube.position.set(0, targetY, 0);
+            
+            // Scale Arrows based on Force
+            // W is constant base, FA varies
+            const maxF = 300; // rough max for scale
+            const scW = Math.max(0.1, (s.w / maxF) * 0.5) / side; // divide by side to counter cube scale
+            const scFA = Math.max(0.1, (s.fa / maxF) * 0.5) / side;
+            
+            arrW.setLength(scW, 0.05/side, 0.04/side);
+            arrFA.setLength(scFA, 0.05/side, 0.04/side);
         }
 
         function setupAR() {
-            // AR Button with DOM Overlay
-            const arBtnContainer = document.getElementById('ar-button-container');
-            const overlayElement = document.getElementById('ar-overlay-ui');
-            
-            const sessionInit = {
-                requiredFeatures: ['hit-test'],
-                optionalFeatures: ['dom-overlay'],
-                domOverlay: { root: overlayElement }
-            };
+            const overlay = getEl('ar-overlay-ui');
+            const arBtnContainer = getEl('ar-button-container');
+            const sessionInit = { requiredFeatures: ['hit-test'], optionalFeatures: ['dom-overlay'], domOverlay: { root: overlay } };
 
             const arButton = ARButton.createButton( renderer, sessionInit );
-            // Style the generic AR button
-            arButton.style.backgroundColor = '#2563eb';
-            arButton.style.bottom = '20px';
-            arButton.style.padding = '12px 24px';
-            arButton.style.borderRadius = '8px';
-            arButton.style.fontWeight = 'bold';
+            arButton.style.cssText = "background-color: #2563eb; bottom: 20px; padding: 12px 24px; border-radius: 8px; font-weight: bold; position: absolute;";
             arBtnContainer.appendChild( arButton );
 
-            // Setup AR Controllers
             controller = renderer.xr.getController( 0 );
             controller.addEventListener( 'select', onSelect );
             scene.add( controller );
 
-            reticle = new THREE.Mesh(
-                new THREE.RingGeometry( 0.15, 0.2, 32 ).rotateX( - Math.PI / 2 ),
-                new THREE.MeshBasicMaterial( { color: 0x00ff00 } )
-            );
+            reticle = new THREE.Mesh( new THREE.RingGeometry( 0.15, 0.2, 32 ).rotateX( -Math.PI/2 ), new THREE.MeshBasicMaterial( { color: 0x00ff00 } ) );
             reticle.matrixAutoUpdate = false;
             reticle.visible = false;
             scene.add( reticle );
 
-            // Handle AR Session start/end
             renderer.xr.addEventListener('sessionstart', () => {
                 document.body.classList.add('xr-active');
-                scene.background = null; // Transparent background for AR
-                mainGroup.visible = false; // Hide model until placed
+                scene.background = null;
+                arRootGroup.visible = false; 
                 state.isARPlacing = true;
-                ui.arInstruction.style.display = 'block';
-                
-                // Scale model down for AR (1 meter is huge on a desk)
-                mainGroup.scale.set(0.3, 0.3, 0.3);
+                getEl('ar-instruction').style.display = 'block';
+                arRootGroup.scale.set(0.2, 0.2, 0.2); // Scale down for table top
             });
 
             renderer.xr.addEventListener('sessionend', () => {
                 document.body.classList.remove('xr-active');
-                scene.background = new THREE.Color(0xe5e7eb); // Kembalikan warna background
-                
-                // Reset model for 3D view
-                mainGroup.scale.set(1, 1, 1);
-                mainGroup.position.set(0,0,0);
-                mainGroup.visible = true;
-                
+                scene.background = new THREE.Color(0xe5e7eb);
+                arRootGroup.scale.set(1, 1, 1);
+                arRootGroup.position.set(0,0,0);
+                arRootGroup.visible = true;
                 hitTestSourceRequested = false;
                 hitTestSource = null;
             });
             
-            // Exit AR button in overlay
-            ui.btnExitAR.addEventListener('click', () => {
-                const session = renderer.xr.getSession();
-                if(session) session.end();
-            });
+            getEl('btn-exit-ar').onclick = () => renderer.xr.getSession()?.end();
         }
 
         function onSelect() {
             if ( reticle.visible && state.isARPlacing ) {
-                // Place the object at reticle position
-                mainGroup.position.setFromMatrixPosition( reticle.matrix );
-                mainGroup.visible = true;
-                state.isARPlacing = false; // Object placed, stop showing reticle
-                ui.arInstruction.style.display = 'none'; // Hide instructions
+                arRootGroup.position.setFromMatrixPosition( reticle.matrix );
+                arRootGroup.visible = true;
+                state.isARPlacing = false; 
+                getEl('ar-instruction').style.display = 'none';
             }
         }
 
         function onWindowResize() {
-            const container = document.getElementById('ar-container');
+            const container = getEl('ar-container');
             camera.aspect = container.clientWidth / container.clientHeight;
             camera.updateProjectionMatrix();
             renderer.setSize( container.clientWidth, container.clientHeight );
         }
 
-        const clock = new THREE.Clock();
-
-        function animate() {
-            renderer.setAnimationLoop( render );
-        }
-
         function render( timestamp, frame ) {
             const time = clock.getElapsedTime();
 
-            // WebXR Hit Testing Logic
             if ( frame ) {
                 const session = renderer.xr.getSession();
                 if ( session && state.isARPlacing ) {
-                    const referenceSpace = renderer.xr.getReferenceSpace();
+                    const refSpace = renderer.xr.getReferenceSpace();
                     if ( !hitTestSourceRequested ) {
-                        session.requestReferenceSpace( 'viewer' ).then( function ( referenceSpace ) {
-                            session.requestHitTestSource( { space: referenceSpace } ).then( function ( source ) {
-                                hitTestSource = source;
-                            } );
-                        } );
-                        session.addEventListener( 'end', function () {
-                            hitTestSourceRequested = false;
-                            hitTestSource = null;
-                        } );
+                        session.requestReferenceSpace( 'viewer' ).then( r => {
+                            session.requestHitTestSource( { space: r } ).then( s => hitTestSource = s );
+                        });
+                        session.addEventListener( 'end', () => { hitTestSourceRequested = false; hitTestSource = null; } );
                         hitTestSourceRequested = true;
                     }
-
                     if ( hitTestSource ) {
                         const hitTestResults = frame.getHitTestResults( hitTestSource );
                         if ( hitTestResults.length > 0 ) {
-                            const hit = hitTestResults[ 0 ];
                             reticle.visible = true;
-                            reticle.matrix.fromArray( hit.getPose( referenceSpace ).transform.matrix );
-                        } else {
-                            reticle.visible = false;
-                        }
+                            reticle.matrix.fromArray( hitTestResults[0].getPose( refSpace ).transform.matrix );
+                        } else { reticle.visible = false; }
                     }
-                } else if (!state.isARPlacing) {
-                    reticle.visible = false; // Hide reticle after placement
-                }
+                } else if (!state.isARPlacing) { reticle.visible = false; }
             }
             
-            // Update OrbitControls untuk efek damping
-            if (window.appControls) {
-                window.appControls.update();
-            }
+            if (controls) controls.update();
 
-            // Simple idle animation (bobbing arrows slightly)
-            if(arrowGroup && arrowGroup.userData.pulseScale > 0) {
-                const baseScale = arrowGroup.userData.pulseScale;
-                const pulse = Math.sin(time * 3) * 0.05 * baseScale; // small pulse
-                
-                arrowGroup.children.forEach(child => {
-                    if(child instanceof THREE.ArrowHelper) {
-                        const newLength = (0.1 * baseScale) + pulse;
-                        child.setLength(newLength, 0.05, 0.04);
-                        const newOrigin = child.userData.baseDir.clone().multiplyScalar(-newLength);
-                        child.position.copy(newOrigin);
+            // Idle Animations
+            if(state.menu === 1 && hydroArrows && hydroArrows.userData.pScale > 0) {
+                const p = Math.sin(time * 3) * 0.02 * hydroArrows.userData.pScale;
+                hydroArrows.children.forEach(c => {
+                    if(c instanceof THREE.ArrowHelper) {
+                        const baseL = 0.1 * hydroArrows.userData.pScale;
+                        c.setLength(baseL + p, 0.05, 0.04);
+                        c.position.copy(c.userData.baseDir.clone().multiplyScalar(-(baseL+p)));
                     }
                 });
+            } else if (state.menu === 3 && archCube && state.arch.status === 'TERAPUNG') {
+                // Bobbing animation for floating object
+                const h_sub = archCube.scale.y * (state.arch.rho_b / state.arch.rho_f);
+                const baseY = 0.8 - h_sub + (archCube.scale.y/2);
+                archCube.position.y = baseY + Math.sin(time * 2) * 0.01;
             }
 
             renderer.render( scene, camera );
         }
-
-        // Initialize Everything
-        initChart();
-        calculatePhysics(); // initial calculation
 
     </script>
 </body>
